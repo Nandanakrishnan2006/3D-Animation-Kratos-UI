@@ -132,6 +132,31 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+/* ---- KRATOS MMXXVI cinematic theme ---- */
+:root {
+  --void: oklch(0.09 0.012 40);
+  --ash: oklch(0.16 0.02 40);
+  --blood: oklch(0.45 0.19 28);
+  --ember: oklch(0.62 0.21 38);
+  --crimson: oklch(0.52 0.22 27);
+  --gold: oklch(0.82 0.15 84);
+  --gold-deep: oklch(0.68 0.14 72);
+  --bone: oklch(0.95 0.01 80);
+}
+
+@theme inline {
+  --color-void: var(--void);
+  --color-ash: var(--ash);
+  --color-blood: var(--blood);
+  --color-ember: var(--ember);
+  --color-crimson: var(--crimson);
+  --color-gold: var(--gold);
+  --color-gold-deep: var(--gold-deep);
+  --color-bone: var(--bone);
+  --font-heading: "Anton", ui-sans-serif, sans-serif;
+  --font-display: "Rajdhani", ui-sans-serif, sans-serif;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
@@ -140,5 +165,68 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+  }
+
+  .kratos-stage body,
+  body.kratos-stage {
+    background-color: var(--void);
+    color: var(--bone);
+  }
+}
+
+@utility text-gold-metal {
+  background-image: linear-gradient(
+    180deg,
+    oklch(0.98 0.04 90) 0%,
+    var(--gold) 34%,
+    var(--gold-deep) 52%,
+    oklch(0.55 0.19 40) 72%,
+    var(--gold) 100%
+  );
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.02em;
+  filter: drop-shadow(0 0 24px color-mix(in oklab, var(--ember) 55%, transparent))
+    drop-shadow(0 6px 0 oklch(0.24 0.09 32)) drop-shadow(0 12px 30px oklch(0.1 0.04 30));
+}
+
+@utility text-outline-gold {
+  color: transparent;
+  -webkit-text-stroke: 1.5px color-mix(in oklab, var(--gold) 70%, transparent);
+  text-shadow:
+    0 0 42px color-mix(in oklab, var(--ember) 45%, transparent),
+    0 0 120px color-mix(in oklab, var(--crimson) 35%, transparent);
+  letter-spacing: 0.04em;
+}
+
+@utility btn-ember {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid color-mix(in oklab, var(--gold) 55%, transparent);
+  background-image: linear-gradient(135deg, var(--crimson), oklch(0.3 0.12 30));
+  color: var(--bone);
+  padding: 0.55rem 1.1rem;
+  box-shadow: 0 0 26px color-mix(in oklab, var(--ember) 35%, transparent);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+@utility scroll-line {
+  display: block;
+  width: 1px;
+  height: 54px;
+  background: linear-gradient(to bottom, transparent, var(--ember), transparent);
+  animation: kratos-drop 2.2s ease-in-out infinite;
+}
+
+@keyframes kratos-drop {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scaleY(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
   }
 }
