@@ -238,16 +238,14 @@ function Embers({ count = 260 }: { count?: number }) {
     const attr = pts.geometry.getAttribute("position") as THREE.BufferAttribute;
     const t = state.clock.elapsedTime;
     for (let i = 0; i < count; i++) {
-      const rise = seeds[i * 3];
-      const phase = seeds[i * 3 + 1];
-      let y = positions[i * 3 + 1] + ((t * rise) % 24);
+      const rise = seeds[i * 3] ?? 1;
+      const phase = seeds[i * 3 + 1] ?? 0;
+      const baseX = positions[i * 3] ?? 0;
+      const baseY = positions[i * 3 + 1] ?? 0;
+      const baseZ = positions[i * 3 + 2] ?? 0;
+      let y = baseY + ((t * rise) % 24);
       if (y > 9.5) y -= 20;
-      attr.setXYZ(
-        i,
-        positions[i * 3] + Math.sin(t * 0.35 * rise + phase) * 0.9,
-        y,
-        positions[i * 3 + 2],
-      );
+      attr.setXYZ(i, baseX + Math.sin(t * 0.35 * rise + phase) * 0.9, y, baseZ);
     }
     attr.needsUpdate = true;
   });
