@@ -133,8 +133,11 @@ export function Overlay({ progress }: { progress: RefObject<number> }) {
           ref={openRef}
           className="absolute inset-0 flex flex-col items-center justify-center text-center"
         >
-          <p className="font-display text-[11px] tracking-[0.62em] text-ember/80 uppercase">
-            Sri College of Engineering presents
+          <p
+            className="font-display text-[13px] tracking-[0.62em] text-gold uppercase"
+            style={{ textShadow: "0 0 18px rgba(255,180,60,0.55)" }}
+          >
+            Easwari Engineering College presents
           </p>
           <p className="mt-6 font-heading text-[clamp(2rem,7vw,6rem)] leading-none text-gold-metal">
             THE BEAST AWAKENS
