@@ -485,7 +485,28 @@ function SceneContents() {
     <>
       <CameraRig />
       <Embers />
+      <ambientLight intensity={0.75} />
+      <directionalLight position={[-7, 9, 8]} intensity={1.7} color="#ffcf6a" />
+      <directionalLight position={[8, -4, 5]} intensity={0.9} color="#ff3a12" />
+      <pointLight position={[0, 0, 10]} intensity={30} distance={30} color="#ffb84d" />
       <Suspense fallback={null}>
+        <Environment resolution={256}>
+          <Lightformer intensity={3} color="#ffc23c" position={[0, 6, -6]} scale={[12, 6, 1]} />
+          <Lightformer
+            intensity={2}
+            color="#e0290f"
+            position={[-7, -2, -3]}
+            rotation-y={Math.PI / 2}
+            scale={[14, 5, 1]}
+          />
+          <Lightformer
+            intensity={1.4}
+            color="#ffe9b0"
+            position={[7, 3, 2]}
+            rotation-y={-Math.PI / 2}
+            scale={[10, 4, 1]}
+          />
+        </Environment>
         {OBJECTS.map((o, i) => (
           <Floater key={i} {...o} />
         ))}
