@@ -140,6 +140,18 @@ function Floater({
     const p = pulse(t, 0.22, 0.72);
     const s = 0.72 + easeOut(p) * 0.28;
     g.scale.setScalar(s);
+
+    // fade in/out of the darkness by dimming toward black — keeps depth writing
+    // (and therefore true occlusion with the lion) intact, unlike alpha blending
+    const slab = g.children[0];
+    if (slab) {
+      slab.children.forEach((child, i) => {
+        const m = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        const lt = i / (LAYERS - 1);
+        const base = i === 0 ? 1 : Math.max(0, 0.18 - lt * 0.12);
+        m.color.setScalar(base * p);
+      });
+    }
     if (mat.current) mat.current.envMapIntensity = 0.8 + p * 0.8;
     if (light.current) light.current.intensity = p * 22;
   });
