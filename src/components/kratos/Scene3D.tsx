@@ -74,7 +74,7 @@ function Slab({
           >
             <planeGeometry args={[w, h]} />
             <meshStandardMaterial
-              ref={front ? matRef : undefined}
+              ref={front ? matRef : null}
               map={tex}
               alphaTest={0.45}
               transparent={false}
