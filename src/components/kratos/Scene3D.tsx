@@ -1,6 +1,13 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useTexture } from "@react-three/drei";
-import { Suspense, createContext, useContext, useMemo, useRef, type RefObject } from "react";
+import { Environment, Lightformer, useTexture } from "@react-three/drei";
+import {
+  Suspense,
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  type RefObject,
+} from "react";
 import * as THREE from "three";
 
 import { ACTS, easeInOut, easeOut, lerp, pulse, seg } from "./progress";
@@ -32,7 +39,60 @@ type FloaterProps = {
   glow?: string;
 };
 
-/** A large 3D-sticker object that sweeps through the scene with depth + rotation. */
+const LAYERS = 12;
+
+/**
+ * Builds a real volumetric slab out of the object's silhouette: the lit front
+ * face plus stacked, darkened shells behind it that read as bevelled thickness
+ * when the object rotates. alphaTest keeps the true silhouette — no boxes.
+ */
+function Slab({
+  tex,
+  w,
+  h,
+  depth,
+  matRef,
+}: {
+  tex: THREE.Texture;
+  w: number;
+  h: number;
+  depth: number;
+  matRef: React.RefObject<THREE.MeshStandardMaterial | null>;
+}) {
+  const shells = useMemo(() => Array.from({ length: LAYERS }, (_, i) => i), []);
+  return (
+    <group>
+      {shells.map((i) => {
+        const t = i / (LAYERS - 1);
+        const front = i === 0;
+        return (
+          <mesh
+            key={i}
+            position={[0, 0, -t * depth]}
+            scale={1 - t * 0.02}
+            castShadow={front}
+          >
+            <planeGeometry args={[w, h]} />
+            <meshStandardMaterial
+              ref={front ? matRef : undefined}
+              map={tex}
+              alphaTest={0.45}
+              transparent={false}
+              color={front ? "#ffffff" : new THREE.Color().setScalar(0.18 - t * 0.12)}
+              metalness={front ? 0.65 : 0.35}
+              roughness={front ? 0.28 : 0.75}
+              envMapIntensity={front ? 1.25 : 0.35}
+              emissive={front ? new THREE.Color("#20090a") : new THREE.Color("#000000")}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+/** A large 3D object that sweeps through the scene with real depth + rotation. */
 function Floater({
   url,
   window: win,
@@ -46,12 +106,14 @@ function Floater({
 }: FloaterProps) {
   const tex = useTexture(url);
   const group = useRef<THREE.Group>(null);
-  const mat = useRef<THREE.MeshBasicMaterial>(null);
-  const glowMat = useRef<THREE.MeshBasicMaterial>(null);
+  const mat = useRef<THREE.MeshStandardMaterial>(null);
+  const light = useRef<THREE.PointLight>(null);
   const progress = useProgress();
 
   const aspect = useMemo(() => {
     const img = tex.image as { width: number; height: number } | undefined;
+    tex.anisotropy = 8;
+    tex.colorSpace = THREE.SRGBColorSpace;
     return img ? img.width / img.height : 1;
   }, [tex]);
 
@@ -72,42 +134,32 @@ function Floater({
       lerp(from[2], to[2], e),
     );
     g.rotation.z = tilt + Math.sin(time * 0.5 * floatSpeed) * 0.06 + (e - 0.5) * spin;
-    g.rotation.y = Math.sin(time * 0.35 * floatSpeed + 1.2) * 0.25 + (e - 0.5) * spin * 0.8;
-    g.rotation.x = Math.sin(time * 0.3 * floatSpeed) * 0.08;
+    g.rotation.y = Math.sin(time * 0.35 * floatSpeed + 1.2) * 0.32 + (e - 0.5) * spin * 0.9;
+    g.rotation.x = Math.sin(time * 0.3 * floatSpeed) * 0.1;
 
     const p = pulse(t, 0.22, 0.72);
     const s = 0.72 + easeOut(p) * 0.28;
     g.scale.setScalar(s);
-    if (mat.current) mat.current.opacity = p;
-    if (glowMat.current) glowMat.current.opacity = p * 0.35;
+    if (mat.current) mat.current.envMapIntensity = 0.8 + p * 0.8;
+    if (light.current) light.current.intensity = p * 22;
   });
 
   return (
     <group ref={group}>
-      <mesh position={[0, 0, -0.05]} scale={1.35}>
-        <planeGeometry args={[height * aspect, height]} />
-        <meshBasicMaterial
-          ref={glowMat}
-          map={tex}
-          color={glow}
-          transparent
-          opacity={0}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-        />
-      </mesh>
-      <mesh>
-        <planeGeometry args={[height * aspect, height]} />
-        <meshBasicMaterial
-          ref={mat}
-          map={tex}
-          transparent
-          opacity={0}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
+      <Slab
+        tex={tex}
+        w={height * aspect}
+        h={height}
+        depth={height * 0.09}
+        matRef={mat}
+      />
+      <pointLight
+        ref={light}
+        color={glow}
+        distance={height * 2.4}
+        intensity={0}
+        position={[0, 0, height * 0.35]}
+      />
     </group>
   );
 }
