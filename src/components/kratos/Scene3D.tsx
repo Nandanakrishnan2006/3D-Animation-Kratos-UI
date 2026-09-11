@@ -181,7 +181,8 @@ function Lion() {
   const tex = useTexture(lionAsset.url);
   const group = useRef<THREE.Group>(null);
   const mat = useRef<THREE.MeshBasicMaterial>(null);
-  const auraMat = useRef<THREE.MeshBasicMaterial>(null);
+  const rim = useRef<THREE.PointLight>(null);
+  const shells = useMemo(() => Array.from({ length: 10 }, (_, i) => i), []);
   const progress = useProgress();
   const { viewport } = useThree();
 
@@ -221,38 +222,38 @@ function Lion() {
     g.rotation.z = swing + Math.sin(time * 0.6) * 0.02;
     g.rotation.y = lerp(Math.sin(mid * Math.PI * 2) * 0.4, 0, home) + Math.sin(time * 0.4) * 0.04;
 
-    const opacity = Math.min(1, wakeE * 1.2);
-    if (mat.current) mat.current.opacity = opacity;
-    if (auraMat.current)
-      auraMat.current.opacity = opacity * (0.28 + Math.sin(time * 1.6) * 0.06);
+    // rises out of black without alpha blending, so it occludes / is occluded properly
+    const reveal = Math.min(1, wakeE * 1.2);
+    if (mat.current) mat.current.color.setScalar(reveal);
+    if (rim.current) rim.current.intensity = reveal * (14 + Math.sin(time * 1.6) * 3);
   });
 
   return (
     <group ref={group}>
-      <mesh position={[0, 0, -0.05]} scale={1.28}>
-        <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial
-          ref={auraMat}
-          map={tex}
-          color="#ff5a1a"
-          transparent
-          opacity={0}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-        />
-      </mesh>
+      {shells.map((i) => (
+        <mesh key={i} position={[0, 0, -0.012 * (i + 1)]} scale={1 - i * 0.004}>
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial
+            map={tex}
+            alphaTest={0.5}
+            transparent={false}
+            color={new THREE.Color().setScalar(Math.max(0.04, 0.16 - i * 0.02))}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
       <mesh>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial
           ref={mat}
           map={tex}
-          transparent
-          opacity={0}
-          depthWrite={false}
+          alphaTest={0.5}
+          transparent={false}
+          color="#000000"
           toneMapped={false}
         />
       </mesh>
+      <pointLight ref={rim} color="#ff6a1e" distance={4} intensity={0} position={[0, 0, 0.6]} />
     </group>
   );
 }
