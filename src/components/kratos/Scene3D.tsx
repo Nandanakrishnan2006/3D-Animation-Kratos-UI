@@ -1,6 +1,13 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useTexture } from "@react-three/drei";
-import { Suspense, createContext, useContext, useMemo, useRef, type RefObject } from "react";
+import { Environment, Lightformer, useTexture } from "@react-three/drei";
+import {
+  Suspense,
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  type RefObject,
+} from "react";
 import * as THREE from "three";
 
 import { ACTS, easeInOut, easeOut, lerp, pulse, seg } from "./progress";
@@ -32,7 +39,60 @@ type FloaterProps = {
   glow?: string;
 };
 
-/** A large 3D-sticker object that sweeps through the scene with depth + rotation. */
+const LAYERS = 12;
+
+/**
+ * Builds a real volumetric slab out of the object's silhouette: the lit front
+ * face plus stacked, darkened shells behind it that read as bevelled thickness
+ * when the object rotates. alphaTest keeps the true silhouette — no boxes.
+ */
+function Slab({
+  tex,
+  w,
+  h,
+  depth,
+  matRef,
+}: {
+  tex: THREE.Texture;
+  w: number;
+  h: number;
+  depth: number;
+  matRef: React.RefObject<THREE.MeshStandardMaterial | null>;
+}) {
+  const shells = useMemo(() => Array.from({ length: LAYERS }, (_, i) => i), []);
+  return (
+    <group>
+      {shells.map((i) => {
+        const t = i / (LAYERS - 1);
+        const front = i === 0;
+        return (
+          <mesh
+            key={i}
+            position={[0, 0, -t * depth]}
+            scale={1 - t * 0.02}
+            castShadow={front}
+          >
+            <planeGeometry args={[w, h]} />
+            <meshStandardMaterial
+              ref={front ? matRef : null}
+              map={tex}
+              alphaTest={0.45}
+              transparent={false}
+              color={front ? "#ffffff" : new THREE.Color().setScalar(0.18 - t * 0.12)}
+              metalness={front ? 0.65 : 0.35}
+              roughness={front ? 0.28 : 0.75}
+              envMapIntensity={front ? 1.25 : 0.35}
+              emissive={front ? new THREE.Color("#20090a") : new THREE.Color("#000000")}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+/** A large 3D object that sweeps through the scene with real depth + rotation. */
 function Floater({
   url,
   window: win,
@@ -46,12 +106,14 @@ function Floater({
 }: FloaterProps) {
   const tex = useTexture(url);
   const group = useRef<THREE.Group>(null);
-  const mat = useRef<THREE.MeshBasicMaterial>(null);
-  const glowMat = useRef<THREE.MeshBasicMaterial>(null);
+  const mat = useRef<THREE.MeshStandardMaterial>(null);
+  const light = useRef<THREE.PointLight>(null);
   const progress = useProgress();
 
   const aspect = useMemo(() => {
     const img = tex.image as { width: number; height: number } | undefined;
+    tex.anisotropy = 8;
+    tex.colorSpace = THREE.SRGBColorSpace;
     return img ? img.width / img.height : 1;
   }, [tex]);
 
@@ -72,42 +134,44 @@ function Floater({
       lerp(from[2], to[2], e),
     );
     g.rotation.z = tilt + Math.sin(time * 0.5 * floatSpeed) * 0.06 + (e - 0.5) * spin;
-    g.rotation.y = Math.sin(time * 0.35 * floatSpeed + 1.2) * 0.25 + (e - 0.5) * spin * 0.8;
-    g.rotation.x = Math.sin(time * 0.3 * floatSpeed) * 0.08;
+    g.rotation.y = Math.sin(time * 0.35 * floatSpeed + 1.2) * 0.32 + (e - 0.5) * spin * 0.9;
+    g.rotation.x = Math.sin(time * 0.3 * floatSpeed) * 0.1;
 
     const p = pulse(t, 0.22, 0.72);
     const s = 0.72 + easeOut(p) * 0.28;
     g.scale.setScalar(s);
-    if (mat.current) mat.current.opacity = p;
-    if (glowMat.current) glowMat.current.opacity = p * 0.35;
+
+    // fade in/out of the darkness by dimming toward black — keeps depth writing
+    // (and therefore true occlusion with the lion) intact, unlike alpha blending
+    const slab = g.children[0];
+    if (slab) {
+      slab.children.forEach((child, i) => {
+        const m = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        const lt = i / (LAYERS - 1);
+        const base = i === 0 ? 1 : Math.max(0, 0.18 - lt * 0.12);
+        m.color.setScalar(base * p);
+      });
+    }
+    if (mat.current) mat.current.envMapIntensity = 0.8 + p * 0.8;
+    if (light.current) light.current.intensity = p * 12;
   });
 
   return (
     <group ref={group}>
-      <mesh position={[0, 0, -0.05]} scale={1.35}>
-        <planeGeometry args={[height * aspect, height]} />
-        <meshBasicMaterial
-          ref={glowMat}
-          map={tex}
-          color={glow}
-          transparent
-          opacity={0}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-        />
-      </mesh>
-      <mesh>
-        <planeGeometry args={[height * aspect, height]} />
-        <meshBasicMaterial
-          ref={mat}
-          map={tex}
-          transparent
-          opacity={0}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
+      <Slab
+        tex={tex}
+        w={height * aspect}
+        h={height}
+        depth={height * 0.09}
+        matRef={mat}
+      />
+      <pointLight
+        ref={light}
+        color={glow}
+        distance={height * 2.4}
+        intensity={0}
+        position={[0, 0, height * 0.35]}
+      />
     </group>
   );
 }
@@ -117,7 +181,8 @@ function Lion() {
   const tex = useTexture(lionAsset.url);
   const group = useRef<THREE.Group>(null);
   const mat = useRef<THREE.MeshBasicMaterial>(null);
-  const auraMat = useRef<THREE.MeshBasicMaterial>(null);
+  const rim = useRef<THREE.PointLight>(null);
+  const shells = useMemo(() => Array.from({ length: 6 }, (_, i) => i), []);
   const progress = useProgress();
   const { viewport } = useThree();
 
@@ -157,38 +222,38 @@ function Lion() {
     g.rotation.z = swing + Math.sin(time * 0.6) * 0.02;
     g.rotation.y = lerp(Math.sin(mid * Math.PI * 2) * 0.4, 0, home) + Math.sin(time * 0.4) * 0.04;
 
-    const opacity = Math.min(1, wakeE * 1.2);
-    if (mat.current) mat.current.opacity = opacity;
-    if (auraMat.current)
-      auraMat.current.opacity = opacity * (0.28 + Math.sin(time * 1.6) * 0.06);
+    // rises out of black without alpha blending, so it occludes / is occluded properly
+    const reveal = Math.min(1, wakeE * 1.2);
+    if (mat.current) mat.current.color.setScalar(reveal);
+    if (rim.current) rim.current.intensity = reveal * (14 + Math.sin(time * 1.6) * 3);
   });
 
   return (
     <group ref={group}>
-      <mesh position={[0, 0, -0.05]} scale={1.28}>
-        <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial
-          ref={auraMat}
-          map={tex}
-          color="#ff5a1a"
-          transparent
-          opacity={0}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-        />
-      </mesh>
+      {shells.map((i) => (
+        <mesh key={i} position={[0, 0, -0.006 * (i + 1)]} scale={1 - i * 0.008}>
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial
+            map={tex}
+            alphaTest={0.5}
+            transparent={false}
+            color={new THREE.Color().setScalar(Math.max(0.03, 0.12 - i * 0.02))}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
       <mesh>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial
           ref={mat}
           map={tex}
-          transparent
-          opacity={0}
-          depthWrite={false}
+          alphaTest={0.5}
+          transparent={false}
+          color="#000000"
           toneMapped={false}
         />
       </mesh>
+      <pointLight ref={rim} color="#ff6a1e" distance={4} intensity={0} position={[0, 0, 0.6]} />
     </group>
   );
 }
@@ -420,7 +485,28 @@ function SceneContents() {
     <>
       <CameraRig />
       <Embers />
+      <ambientLight intensity={1.05} />
+      <directionalLight position={[-7, 9, 8]} intensity={1.35} color="#fff0cc" />
+      <directionalLight position={[8, -4, 5]} intensity={0.5} color="#ff5a2a" />
+      <pointLight position={[0, 0, 10]} intensity={22} distance={34} color="#ffe6b8" />
       <Suspense fallback={null}>
+        <Environment resolution={256}>
+          <Lightformer intensity={3} color="#ffc23c" position={[0, 6, -6]} scale={[12, 6, 1]} />
+          <Lightformer
+            intensity={2}
+            color="#e0290f"
+            position={[-7, -2, -3]}
+            rotation-y={Math.PI / 2}
+            scale={[14, 5, 1]}
+          />
+          <Lightformer
+            intensity={1.4}
+            color="#ffe9b0"
+            position={[7, 3, 2]}
+            rotation-y={-Math.PI / 2}
+            scale={[10, 4, 1]}
+          />
+        </Environment>
         {OBJECTS.map((o, i) => (
           <Floater key={i} {...o} />
         ))}
