@@ -153,7 +153,7 @@ function Floater({
       });
     }
     if (mat.current) mat.current.envMapIntensity = 0.8 + p * 0.8;
-    if (light.current) light.current.intensity = p * 22;
+    if (light.current) light.current.intensity = p * 12;
   });
 
   return (
@@ -485,10 +485,10 @@ function SceneContents() {
     <>
       <CameraRig />
       <Embers />
-      <ambientLight intensity={0.75} />
-      <directionalLight position={[-7, 9, 8]} intensity={1.7} color="#ffcf6a" />
-      <directionalLight position={[8, -4, 5]} intensity={0.9} color="#ff3a12" />
-      <pointLight position={[0, 0, 10]} intensity={30} distance={30} color="#ffb84d" />
+      <ambientLight intensity={1.05} />
+      <directionalLight position={[-7, 9, 8]} intensity={1.35} color="#fff0cc" />
+      <directionalLight position={[8, -4, 5]} intensity={0.5} color="#ff5a2a" />
+      <pointLight position={[0, 0, 10]} intensity={22} distance={34} color="#ffe6b8" />
       <Suspense fallback={null}>
         <Environment resolution={256}>
           <Lightformer intensity={3} color="#ffc23c" position={[0, 6, -6]} scale={[12, 6, 1]} />
