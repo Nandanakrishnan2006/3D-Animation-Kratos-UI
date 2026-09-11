@@ -224,7 +224,10 @@ export function Overlay({ progress }: { progress: RefObject<number> }) {
           ref={hintRef}
           className="absolute inset-x-0 bottom-8 flex flex-col items-center gap-2"
         >
-          <span className="font-display text-[10px] uppercase tracking-[0.5em] text-bone/50">
+          <span
+            className="font-display text-[12px] font-semibold uppercase tracking-[0.5em] text-gold"
+            style={{ textShadow: "0 0 20px rgba(255,196,72,0.6)" }}
+          >
             Scroll to begin
           </span>
           <span className="scroll-line" />
