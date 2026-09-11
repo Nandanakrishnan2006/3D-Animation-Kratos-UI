@@ -182,7 +182,7 @@ function Lion() {
   const group = useRef<THREE.Group>(null);
   const mat = useRef<THREE.MeshBasicMaterial>(null);
   const rim = useRef<THREE.PointLight>(null);
-  const shells = useMemo(() => Array.from({ length: 10 }, (_, i) => i), []);
+  const shells = useMemo(() => Array.from({ length: 6 }, (_, i) => i), []);
   const progress = useProgress();
   const { viewport } = useThree();
 
@@ -231,13 +231,13 @@ function Lion() {
   return (
     <group ref={group}>
       {shells.map((i) => (
-        <mesh key={i} position={[0, 0, -0.012 * (i + 1)]} scale={1 - i * 0.004}>
+        <mesh key={i} position={[0, 0, -0.006 * (i + 1)]} scale={1 - i * 0.008}>
           <planeGeometry args={[1, 1]} />
           <meshBasicMaterial
             map={tex}
             alphaTest={0.5}
             transparent={false}
-            color={new THREE.Color().setScalar(Math.max(0.04, 0.16 - i * 0.02))}
+            color={new THREE.Color().setScalar(Math.max(0.03, 0.12 - i * 0.02))}
             toneMapped={false}
           />
         </mesh>
